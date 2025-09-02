@@ -20,84 +20,138 @@
   let DATA = []; // единый массив данных
   let isCatalogOpen = false;
   let isAnimating = false;
+  let dt;
 
   // Блокируем кнопки до загрузки JSON
   $btnSearch.prop('disabled', true);
   $btnAll.prop('disabled', true);
 
-  // Загружаем JSON в общий DATA
-  $.getJSON('data/parts.json')
+  // Загружаем единый файл с двумя массивами: parts и cards
+  $.getJSON('/data/parts.json')
     .done(function(json) {
-      DATA = json;
+      // Диагностика структуры JSON
+      console.group('Диагностика parts.json');
+      console.log('JSON:', json);
 
-      // 🔍 Быстрая проверка
-      try {
-        if (!Array.isArray(DATA)) throw new Error('Данные не являются массивом');
-        if (!DATA.length) throw new Error('Массив пуст');
-        DATA.forEach(function(item, i) {
-          if (!item.code || !item.name || !item.photo) {
-            throw new Error(`Нет обязательного поля в элементе №${i + 1}`);
-          }
-        });
-        console.log(`✅ Загружено ${DATA.length} записей — формат корректен`);
-      } catch (e) {
-        console.error(`❌ Проблема с JSON: ${e.message}`);
+      if (!json) {
+        console.error('JSON пустой или не загружен');
+        console.groupEnd();
+        return;
+      }
+      if (!Array.isArray(json.cards)) {
+        console.error('json.cards не массив:', json.cards);
+      } else {
+        console.log('json.cards ОК, длина:', json.cards.length);
+      }
+      if (!Array.isArray(json.parts)) {
+        console.error('json.parts не массив:', json.parts);
+      } else {
+        console.log('json.parts ОК, длина:', json.parts.length);
       }
 
-      // Разблокируем кнопки и поля
+      // Проверка структуры элементов parts
+      if (Array.isArray(json.parts)) {
+        json.parts.forEach((item, idx) => {
+          if (!item.code || !item.name || !item.photo) {
+            console.warn(`Элемент parts[${idx}] не содержит всех полей:`, item);
+          }
+        });
+      }
+
+      // Проверка наличия контейнера для карточек
+      const container = document.getElementById('cards-wrap');
+      if (!container) {
+        console.error('Не найден элемент #cards-wrap в DOM');
+      } else {
+        console.log('Элемент #cards-wrap найден');
+      }
+      console.groupEnd();
+
+      // 1) Рендерим карточки из json.cards
+      renderCards(json.cards);
+
+      // 2) Подготовка массива деталей для поиска и таблицы
+      DATA = json.parts;
+
+      // 3) Ваша валидация массива DATA и разблокировка форм
+      try {
+        if (!Array.isArray(DATA)) throw new Error('DATA не массив');
+        // Проверка на пустоту
+        if (DATA.length === 0) throw new Error('DATA пустой');
+      } catch (e) {
+        console.error('Проблема с JSON:', e.message);
+      }
       $btnSearch.prop('disabled', false);
-      $btnAll.prop('disabled', false);
-      $input.prop('disabled', false);
-    })
-    .fail(function(jqxhr, textStatus, error) {
-      console.error('Ошибка загрузки parts.json:', textStatus, error);
-    });
+      $btnAll    .prop('disabled', false);
+      $input     .prop('disabled', false);
+  })
+  .fail(function(jqXHR, textStatus, errorThrown) {
+    console.error('Не удалось загрузить parts.json:', textStatus, errorThrown);
+  });
 
   // Заглушка (можешь оставить как есть)
   const PLACEHOLDER_SRC =
     "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='480'%3E%3Crect width='100%25' height='100%25' fill='%23eeeeee'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999999' font-family='Verdana' font-size='26'%3E%D0%9D%D0%95%D0%A2%20%D0%A4%D0%9E%D0%A2%D0%9E%3C/text%3E%3C/svg%3E";
   
-  // Инициализация DataTable
-  const dt = $('#parts-table').DataTable({
-    data: [],
-    columns: [
-      { data: 'code', title: 'Код' },
-      {
-        data: 'photo',
-        title: 'Фото',
-        orderable: false,
-        searchable: false,
-        render: function (src, type, row) {
-          if (type !== 'display') return src || '';
-  
-          const safeSrc = src ? escapeHtml(src) : PLACEHOLDER_SRC;
-  
-          const img = document.createElement('img');
-          img.className = 'thumb';
-          img.src = safeSrc;
-          img.alt = `Фото ${escapeHtml(row.code)}`;
-  
-          img.onerror = function () {
-            this.onerror = null;
-            this.src = PLACEHOLDER_SRC;
-          };
-  
-          return img.outerHTML;
-        }
+  $(document).ready(function() {
+    // 1) Инициализация DataTable — таблица пуста, но объект готов к заполнению
+    dt = $('#parts-table').DataTable({
+      data: [],
+      columns: [
+        { data: 'code',  title: 'Код' },
+        {
+          data: 'photo',
+          title: 'Фото',
+          orderable: false,
+          searchable: false,
+          render: function (src, type, row) {
+            if (type !== 'display') return src || '';
+
+            const safeSrc = src ? escapeHtml(src) : PLACEHOLDER_SRC;
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            img.src       = safeSrc;
+            img.alt       = `Фото ${escapeHtml(row.code)}`;
+            img.onerror   = function () {
+              this.onerror = null;
+              this.src     = PLACEHOLDER_SRC;
+            };
+            return img.outerHTML;
+          }
+        },
+        { data: 'name', title: 'Наименование' }
+      ],
+      pageLength: 25,
+      lengthMenu: [[10,20,50,-1],[10,20,50,'Все']],
+      order: [[0,'asc']],
+      autoWidth: false,
+      searching: false,
+      language: {
+        emptyTable: 'Нет данных',
+        info:       'Показаны записи: _START_-_END_ из _TOTAL_',
+        infoEmpty:  '0 записей',
+        paginate:   { previous: 'Назад', next: 'Вперёд' }
       },
-      { data: 'name', title: 'Наименование' }
-    ],
-    pageLength: 25,
-    lengthMenu: [ [10, 20, 50, -1], [10, 20, 50, 'Все'] ],
-    order: [[0, 'asc']],
-    autoWidth: false,
-    language: {
-      emptyTable: 'Нет данных',
-      info: 'Показаны записи: _START_-_END_ из _TOTAL_',
-      infoEmpty: '0 записей',
-      paginate: { previous: 'Назад', next: 'Вперёд' }
-    },
-    dom: 'tip'
+      dom: 'tip'
+    });
+
+    // 3) При поиске/«Показать все» заполняем уже готовый dt
+    $('#search-btn').on('click', function() {
+      const term = $input.val().trim().toLowerCase();
+      const rows = DATA.filter(item =>
+        item.code.toLowerCase().includes(term) ||
+        item.name.toLowerCase().includes(term)
+      );
+      showRows(rows);
+    });
+
+    // По нажатию Enter в инпуте запускаем поиск
+    $input.on('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        $('#search-btn').trigger('click');
+      }
+    });
   });
 
   function escapeHtml(str) {
@@ -109,13 +163,79 @@
       .replaceAll("'", '&#039;');
   }
 
+  /**
+   * Отрисовка карточек в #cards-wrap
+   */
+  
+  // Функция рендера
+  function renderCards(cards) {
+    if (!Array.isArray(cards)) {
+      console.warn('Нет массива карточек для рендера', cards);
+      return;
+    }
+
+    const container = document.getElementById('cards-wrap');
+    if (!container) {
+      console.error('Не найден элемент #cards-wrap');
+      return;
+    }
+    container.innerHTML = '';
+
+    cards.forEach(card => {
+      const photoSrc = card.photo ? escapeHtml(card.photo) : PLACEHOLDER_SRC;
+      const code  = card.code  ? escapeHtml(card.code)  : '';
+      const title = card.name  ? escapeHtml(card.name)  : '';
+      const desc  = card.desc  ? escapeHtml(card.desc)  : '';
+
+      const cardEl = document.createElement('div');
+      cardEl.className = 'card';
+      cardEl.innerHTML = `
+        <img class="card-img" src="${photoSrc}" alt="${title || 'Фото запчасти'}" loading="lazy" />
+        ${code  ? `<div class="card-code">Код: ${code}</div>` : ''}
+        ${title ? `<div class="card-title">${title}</div>` : ''}
+        ${desc  ? `<div class="card-desc">${desc}</div>` : ''}
+        <button class="card-button" type="button">Посмотреть</button>
+      `;
+      cardEl.querySelector('.card-img').onclick =
+      cardEl.querySelector('.card-button').onclick = () => openModal(photoSrc);
+
+      container.append(cardEl);
+    });
+  }
+
   function showRows(rows) {
+    console.group('→ showRows debug');
+  
+    console.log('rows.length =', rows.length);
+  
+    // лог до удаления класса
+    console.log('$tableWrap before removeClass:', {
+      classes:    $tableWrap.attr('class'),
+      styleAttr:  $tableWrap.attr('style'),
+      computed:   getComputedStyle($tableWrap[0]).display
+    });
+  
+    // обновляем таблицу
     dt.clear();
     dt.rows.add(rows);
     dt.draw();
-    $tableWrap.removeClass('hidden');
-    $note.removeClass('hidden');
-    smoothScrollIntoView($tableWrap);
+  
+    // снимаем скрытие
+    $tableWrap.removeClass('hidden').show();
+    $note     .removeClass('hidden').show();
+  
+    // Скрываем карточки при показе таблицы
+    $('#cards-wrap').addClass('hidden');
+  
+    // лог после удаления класса
+    console.log('$tableWrap after removeClass:', {
+      hasClass:   $tableWrap.hasClass('hidden'),
+      classes:    $tableWrap.attr('class'),
+      styleAttr:  $tableWrap.attr('style'),
+      computed:   getComputedStyle($tableWrap[0]).display
+    });
+  
+    console.groupEnd();
   }
 
   function filterData(query) {
@@ -124,7 +244,8 @@
     return DATA.filter(item => {
       const code = item.code.toLowerCase();
       const name = item.name.toLowerCase();
-      return code.startsWith(q) || name.includes(q);
+      return code.startsWith(q)  // код начинается с q
+          || name.startsWith(q); // имя тоже начинается с q
     });
   }
 
@@ -133,6 +254,7 @@
     const val = $input.val().trim();
     $clearBtn.toggle(!!val);
     clearTimeout(suggestTimer);
+    
     if (!val) {
       $suggestions.addClass('hidden').empty();
       return;
@@ -198,104 +320,127 @@
     $suggestions.addClass('hidden').empty();
     $tableWrap.addClass('hidden');
     $note.addClass('hidden');
+    hideTableAndShowCards(); // показываем карточки обратно
   });
 
-  $btnSearch.on('click', function () { doSearch({ openIfSingle: false }); });
-  $input.on('keydown', function (e) {
-    if (e.key === 'Enter') doSearch({ openIfSingle: false });
+  $btnSearch.on('click', function() {
+    const q = $input.val().trim();
+    doSearch({ query: q, exact: false, openIfSingle: false });
   });
 
-  function doSearch(opts = {}) {
-    const { query, openIfSingle = true, exact = false } = opts;
-    const val = (query !== undefined ? String(query) : $input.val()).trim();
-    $suggestions.addClass('hidden').empty();
-    if (!val) {
-      $tableWrap.addClass('hidden');
-      $note.addClass('hidden');
-      return;
+  $input.on('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const q = $input.val().trim();
+      doSearch({ query: q, exact: false, openIfSingle: false });
     }
-    let rows;
-    if (exact) {
-      const q = val.toLowerCase();
-      rows = DATA.filter(it =>
-        it.code.toLowerCase() === q || it.name.toLowerCase() === q
-      );
-    } else {
-      rows = filterData(val);
-    }
-    showRows(rows);
-    if (openIfSingle && rows.length === 1) {
-      openModal(rows[0].photo || PLACEHOLDER_SRC);
-    }
+  });
+
+function doSearch(opts = {}) {
+  // 1. Подготовка аргументов
+  $suggestions.addClass('hidden').empty();
+  const { query, exact = false, openIfSingle = false } = opts;
+  const val = (query !== undefined ? String(query) : $input.val()).trim();
+
+  // 2. Если пустой запрос — скрываем таблицу и выходим
+  if (!val) {
+    $tableWrap.addClass('hidden');
+    $note.addClass('hidden');
+    return;
   }
 
-  $btnAll.on('click', function () {
-    if (isAnimating) return;
-  
-    const durationMs = 400; // должна совпадать с transition в CSS
+  // 3. Фильтрация данных
+  const qLower = val.toLowerCase();
+  let rows;
+  if (exact) {
+    rows = DATA.filter(item =>
+      item.code.toLowerCase() === qLower ||
+      item.name.toLowerCase() === qLower
+    );
+  } else {
+    rows = filterData(val);
+  }
+
+  // 4. Рендерим строки в таблице
+  showRows(rows);
+
+  // 5. Авто-открытие контейнера с результатами
+  if (rows.length > 0 && !isCatalogOpen && !isAnimating) {
     const el = $results[0];
-  
-    // Всегда приводим контент в актуальное состояние перед измерением
-    if (!isCatalogOpen) {
-      // Открываем: подготовка контента
-      $input.val('');
-      $clearBtn.hide();
-      $suggestions.addClass('hidden').empty();
-  
-      // Заполняем таблицу (важно сделать ДО измерения высоты)
-      showRows(DATA);
-  
-      // Снимаем скрытие с контента
-      $tableWrap.removeClass('hidden');
-      $note.removeClass('hidden');
-  
-      // Начинаем анимацию
-      isAnimating = true;
-      // Старт из 0
-      $results.css('height', '0').addClass('open');
-  
-      // Следующий кадр — до полной высоты
-      requestAnimationFrame(() => {
-        const full = el.scrollHeight;
-        $results.css('height', full + 'px');
-      });
-  
-      // По завершении анимации фиксируем auto и завершаем цикл
-      $results.one('transitionend', () => {
-        $results.css('height', 'auto');
-        isAnimating = false;
-        isCatalogOpen = true;
-      });
-  
-    } else {
-      // Закрываем
-      isAnimating = true;
-  
-      // Фиксируем текущую фактическую высоту (если была auto)
-      const current = el.getBoundingClientRect().height;
-      $results.css('height', current + 'px');
-  
-      // Следующий кадр — схлопываем до 0
-      requestAnimationFrame(() => {
-        $results.css('height', '0').removeClass('open');
-      });
-  
-      $results.one('transitionend', () => {
-        // Прячем содержимое ТОЛЬКО после схлопывания
-        $tableWrap.addClass('hidden');
-        $note.addClass('hidden');
-  
-        // Ничего не удаляем из DOM! (НЕ делаем $results.empty())
-        // Если нужно очистить строки таблицы — чистим DataTable:
-        if ($.fn.dataTable.isDataTable('#parts-table')) {
-          $('#parts-table').DataTable().clear().draw();
-        }
-  
-        isAnimating = false;
-        isCatalogOpen = false;
-      });
-    }
-  });
+    isAnimating = true;
+
+    // Начинаем из высоты 0 и сразу ставим класс .open
+    $results.css('height', '0').addClass('open');
+
+    // В следующем кадре плавно развернём до полной высоты
+    requestAnimationFrame(() => {
+      $results.css('height', el.scrollHeight + 'px');
+    });
+
+    // После окончания transition — фиксируем auto и сбрасываем флаги
+    $results.one('transitionend', () => {
+      $results.css('height', 'auto');
+      isAnimating = false;
+      isCatalogOpen = true;
+    });
+  }
+
+  // 6. Открываем модалку, если один результат и опция openIfSingle=true
+  if (openIfSingle && rows.length === 1) {
+    openModal(rows[0].photo || PLACEHOLDER_SRC);
+  }
+}
+
+
+  $btnAll.on('click', function () {
+  if (isAnimating) return;
+
+  const el = $results[0];
+
+  if (!isCatalogOpen) {
+    // Открываем таблицу, скрываем карточки
+    $input.val('');
+    $clearBtn.hide();
+    $suggestions.addClass('hidden').empty();
+
+    showRows(DATA);
+
+    $tableWrap.removeClass('hidden');
+    $note.removeClass('hidden');
+    $('#cards-wrap').addClass('hidden');
+
+    // Анимация открытия
+    isAnimating = true;
+    $results.css('height', '0').addClass('open');
+    requestAnimationFrame(() => {
+      $results.css('height', el.scrollHeight + 'px');
+    });
+    $results.one('transitionend', () => {
+      $results.css('height', 'auto');
+      isAnimating = false;
+      isCatalogOpen = true;
+    });
+
+  } else {
+    // Закрываем таблицу, показываем карточки
+    isAnimating = true;
+    const current = el.getBoundingClientRect().height;
+    $results.css('height', current + 'px');
+    requestAnimationFrame(() => {
+      $results.css('height', '0').removeClass('open');
+    });
+    $results.one('transitionend', () => {
+      $tableWrap.addClass('hidden');
+      $note.addClass('hidden');
+      $('#cards-wrap').removeClass('hidden');
+      if ($.fn.dataTable.isDataTable('#parts-table')) {
+        $('#parts-table').DataTable().clear().draw();
+      }
+      isAnimating = false;
+      isCatalogOpen = false;
+    });
+  }
+});
 
   $('#parts-table tbody').on('click', 'img.thumb', function (e) {
     e.preventDefault();
@@ -353,12 +498,12 @@
     if (!inView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-
-
-
-
-
-
+  // Если нужно вернуть карточки при закрытии таблицы, например, в обработчике закрытия каталога:
+  function hideTableAndShowCards() {
+    $('#table-wrap').addClass('hidden');
+    $('#note').addClass('hidden');
+    $('#cards-wrap').removeClass('hidden');
+  }
 
 })();
 

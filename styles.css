@@ -305,43 +305,89 @@ button:active {
 .modal.fade-in { animation: fadeInUp 0.25s ease-out; }
 
 .cards-wrap {
-  max-width: 1100px;
+  max-width: 600px; /* уменьшили ширину области карточек */
   margin: 24px auto;
   padding: 0 16px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr); /* всегда две карточки в ряд */
   gap: 16px;
+  transition: opacity 1.2s, visibility 1.2s, transform 1.2s;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.03); /* лёгкий прозрачный фон */
+  max-width: 240px;      /* уменьшили ширину карточки */
+  min-height: 280px;     /* уменьшили высоту карточки */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0 auto;
+  background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: 14px 8px;     /* уменьшили внутренние отступы */
   box-shadow: var(--shadow);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
   color: var(--fg);
+  box-sizing: border-box;      /* обязательно! */
 }
 
-.card:hover {
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+.card-img {
+  max-width: 210px;   /* было 140px, стало в 1,5 раза больше */
+  height: 120px;      /* было 80px, стало в 1,5 раза больше */
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #f0f0f0;
+  margin-bottom: 8px;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.card-code,
+.card-title {
+  word-break: break-word;      /* перенос длинных слов */
+  overflow-wrap: anywhere;     /* перенос по любой точке */
+  text-align: center;
+  white-space: normal;         /* разрешаем перенос строк */
+  max-width: 100%;             /* не выходить за пределы карточки */
+  overflow: hidden;
+  display: block;
+}
+
+.card-code {
+  font-size: 15px;       /* вернули прежний размер */
+  font-weight: 500;
+  color: #fff;         /* белый цвет */
+  margin-bottom: 4px;
+  text-align: center;
 }
 
 .card-title {
   font-size: 18px;
-  font-weight: 600;
-  color: var(--accent);
-  margin-bottom: 8px;
+  font-weight: 700;
+  color: var(--accent);   /* вернули акцентный цвет */
+  margin-bottom: 4px;
+  text-align: center;
 }
 
 .card-desc {
   font-size: 14px;
   color: var(--muted);
-  margin-bottom: 12px;
+  margin-bottom: 6px;   /* уменьшили отступ */
+  text-align: center;
+  min-height: 18px;     /* ещё меньше высота */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .card-button {
+  margin-top: auto;
   background: var(--accent);
   color: white;
   border: none;
@@ -433,7 +479,7 @@ button:active {
   height: 0;
   overflow: hidden;
   opacity: 0;
-  transition: height 0.4s ease, opacity 0.4s ease;
+  transition: height 1.2s cubic-bezier(.4,0,.2,1), opacity 1.2s;
 }
 
 #results.open {
@@ -474,4 +520,44 @@ button:active {
   font-weight: bold;
   margin-bottom: 8px;
   color: var(--muted);
+}
+
+/* ------------------------------------------------------------------------
+   Подсветка строки, выбранной из подсказок
+------------------------------------------------------------------------- */
+#parts-table tbody tr.highlight {
+  animation: fadeHighlight 2s ease-out forwards;
+}
+
+/* ключевые кадры для плавного угасания */
+@keyframes fadeHighlight {
+  from {
+    background-color: rgba(78, 161, 255, 0.3);  /* оттенок вашего --accent с прозрачностью */
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.cards-wrap,
+#table-wrap {
+  transition: opacity 1.2s, visibility 1.2s;
+  opacity: 1;
+  visibility: visible;
+}
+
+.cards-wrap.hidden,
+#table-wrap.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition-delay: 0s; /* убрали задержку для более плавного старта */
+}
+
+.cards-wrap.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(30px); /* плавный сдвиг вниз при скрытии */
+  transition-delay: 0s;
 }
