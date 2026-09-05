@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Каталог запчастей</title>
+  <title>Каталог запчастей МАЗ</title>
 
   <!-- SEO и соцсети -->
-  <meta name="description" content="Каталог запчастей для грузовых автомобилей с удобным поиском, фото и контактами." />
-  <meta name="keywords" content="запчасти, грузовые автомобили, каталог, купить, фото" />
+  <meta name="description" content="МАЗ-запчасти.рф МАЗ." />
+  <meta name="keywords" content="запчасти, грузовые автомобили, каталог, купить, фото, МАЗ" />
   <meta property="og:title" content="Каталог запчастей для грузовых автомобилей" />
   <meta property="og:description" content="Быстрый поиск, фото и контактная информация" />
   <meta property="og:type" content="website" />
@@ -21,7 +21,13 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <h1>Каталог запчастей для грузовых автомобилей</h1>
+  <header class="site-header" role="banner" aria-label="Заголовок сайта">
+    <h1 class="site-title">Запчасти МАЗ</h1>
+    <p class="seo-h2">
+      Каталог запчастей МАЗ — Пенза и доставка по России
+      <a href="tel:+79036734846" aria-label="Позвонить +7 (903) 673-48-46">📞 +7 (903) 673‑48‑46</a>
+    </p>
+  </header>
 
   <div class="top-bar">
     <button id="show-all" type="button" aria-label="Показать весь каталог">Весь каталог</button>
@@ -55,26 +61,9 @@
     <a href="tel:+79991234567">📞 +7 (999) 123‑45‑67</a>.
   </div>
 
-  <!-- Таблица -->
-  <div class="results" id="results">
-    <div id="table-wrap" class="hidden" aria-describedby="purchase-note">
-      <table id="parts-table" class="display" style="width:100%">
-        <thead>
-          <tr>
-            <th scope="col">Код</th>
-            <th scope="col">Фото</th>
-            <th scope="col">Наименование</th>
-          </tr>
-        </thead>
-        <tbody>
-        <!-- Динамически заполняется через JS -->
-        </tbody>
-      </table>
-    </div>
-  </div>
-
   <!-- Карточки запчастей -->
   <div id="cards-wrap" class="cards-wrap"></div>
+  <div id="table-wrap"></div>
 
   <!-- Модалка -->
   <div id="modal" class="modal" aria-hidden="true" aria-modal="true" role="dialog">
@@ -83,23 +72,22 @@
       <img class="modal-content" id="modal-img" alt="Просмотр фото запчасти" loading="lazy" />
       <div class="contact-actions">
         <a href="tel:+79991234567" class="call-btn">📞 Позвонить</a>
-        <a href="mailto:parts@example.com" class="mail-btn">✉️ Написать</a>
+        <a href="mailto:graf.p@mail.ru" class="mail-btn">✉️ graf.p@mail.ru</a>
       </div>
     </div>
   </div>
 
-  <!-- Футер -->
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <a href="tel:+79991234567" aria-label="Позвонить по телефону">📞 +7 (999) 123‑45‑67</a>
-      <a href="mailto:parts@example.com" aria-label="Написать на email">✉️ parts@example.com</a>
-      <span>🏢 г. Пенза, ул. Примерная, 15</span>
+  <!-- Футер (новый: год + почта) -->
+  <footer class="site-footer" role="contentinfo" aria-label="Футер сайта">
+    <div>
+      © <span id="site-year">2025</span> — маз‑запчасти.рф, Пенза
+      <span style="margin-left:12px">|</span>
+      <a href="mailto:graf.p@mail.ru" aria-label="Написать на почту">✉️ graf.p@mail.ru</a>
     </div>
   </footer>
-
   <!-- Скрипты -->
   <script src="https://code.jquery.com/jquery-3.7.0.min.js" defer></script>
   <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js" defer></script>
   <script src="scripts/main.js" defer></script>
-</body>
+  </body>
 </html>
